@@ -1,0 +1,6 @@
+{
+  "name": "XCM Store - Digital Marketplace",
+  "description": "Official digital marketplace by XCM Network for gaming accounts, Discord products, and professional digital services.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,291 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document containing account role, identity, and contact information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 255 },
+        "name": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["Customer", "Seller", "Admin", "Super Admin", "Owner", "Finance Manager", "Order Manager", "Product Manager", "Support Manager", "Moderator"] },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "phone": { "type": "string", "maxLength": 50 },
+        "discordTag": { "type": "string", "maxLength": 100 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "name", "role", "status", "createdAt"]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Privileged role lookup entry for verifying administrative access in Firestore security rules",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["Admin", "Super Admin", "Owner", "Finance Manager", "Order Manager"] },
+        "email": { "type": "string", "maxLength": 255 }
+      },
+      "required": ["uid", "role"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Storefront category taxonomy",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 100 },
+        "slug": { "type": "string", "maxLength": 100 },
+        "icon": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 500 },
+        "order": { "type": "number" },
+        "enabled": { "type": "boolean" },
+        "subcategories": { "type": "array" }
+      },
+      "required": ["id", "name", "slug", "enabled"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Digital goods, accounts, subscriptions, and services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 200 },
+        "slug": { "type": "string", "maxLength": 200 },
+        "categoryId": { "type": "string", "maxLength": 64 },
+        "subcategoryId": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "originalPrice": { "type": "number" },
+        "discountPrice": { "type": "number" },
+        "warranty": { "type": "string", "maxLength": 200 },
+        "stockQuantity": { "type": "number" },
+        "images": { "type": "array" },
+        "productType": { "type": "string", "enum": ["account", "service", "digital_key", "subscription"] },
+        "featured": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "draft", "archived"] },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "sellerId": { "type": "string", "maxLength": 64 },
+        "sellerName": { "type": "string", "maxLength": 100 },
+        "isMarketplace": { "type": "boolean" },
+        "deliveryEstimate": { "type": "string", "maxLength": 100 },
+        "customerRequirements": { "type": "string", "maxLength": 2000 },
+        "revisionPolicy": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "slug", "categoryId", "originalPrice", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer purchase order featuring 8-digit verification code and manual payment slip",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "orderCode": { "type": "string", "maxLength": 16, "pattern": "^[0-9]{8}$" },
+        "customerId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "customerEmail": { "type": "string", "maxLength": 255 },
+        "items": { "type": "array" },
+        "originalPrice": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "finalPrice": { "type": "number" },
+        "couponCode": { "type": "string", "maxLength": 50 },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Pending Payment",
+            "Slip Uploaded",
+            "Under Review",
+            "Payment Verified",
+            "Discord Verification",
+            "Processing",
+            "Completed",
+            "Rejected",
+            "Cancelled",
+            "Refunded",
+            "Expired"
+          ]
+        },
+        "statusHistory": { "type": "array" },
+        "bankSnapshot": { "type": "object" },
+        "paymentSlipUrl": { "type": "string", "maxLength": 1000 },
+        "paymentSlipUploadedAt": { "type": "string" },
+        "discordUsername": { "type": "string", "maxLength": 100 },
+        "discordTicketNumber": { "type": "string", "maxLength": 50 },
+        "internalAdminNotes": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "orderCode", "customerId", "customerEmail", "finalPrice", "status", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Verified purchaser product reviews and administrative replies",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "productId": { "type": "string", "maxLength": 64 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "orderId": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 120 },
+        "rating": { "type": "number" },
+        "comment": { "type": "string", "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "isPinned": { "type": "boolean" },
+        "adminReply": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "productId", "userId", "userName", "rating", "comment", "status", "createdAt"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Promotional discounts and marketing codes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 50 },
+        "type": { "type": "string", "enum": ["percentage", "fixed"] },
+        "value": { "type": "number" },
+        "minPurchase": { "type": "number" },
+        "expiryDate": { "type": "string", "maxLength": 50 },
+        "usageLimit": { "type": "number" },
+        "timesUsed": { "type": "number" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "code", "type", "value", "active"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Order updates and administrative alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "enum": ["order", "payment", "system", "seller", "review"] },
+        "link": { "type": "string", "maxLength": 255 },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "read", "createdAt"]
+    },
+    "BankDetails": {
+      "title": "BankDetails",
+      "description": "Official company bank deposit details for manual wire escrow",
+      "type": "object",
+      "properties": {
+        "bankName": { "type": "string", "maxLength": 150 },
+        "accountHolder": { "type": "string", "maxLength": 150 },
+        "accountNumber": { "type": "string", "maxLength": 100 },
+        "branch": { "type": "string", "maxLength": 150 },
+        "paymentInstructions": { "type": "string", "maxLength": 2000 },
+        "paymentDeadlineHours": { "type": "number" }
+      },
+      "required": ["bankName", "accountHolder", "accountNumber", "paymentInstructions"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global storefront settings, maintenance flag, and Discord URLs",
+      "type": "object",
+      "properties": {
+        "maintenanceMode": { "type": "boolean" },
+        "maintenanceMessage": { "type": "string", "maxLength": 500 },
+        "estimatedReturnTime": { "type": "string", "maxLength": 100 },
+        "marketplaceCommissionPercent": { "type": "number" },
+        "currentTheme": { "type": "string", "enum": ["default", "cyberpunk", "christmas", "halloween"] },
+        "announcementText": { "type": "string", "maxLength": 300 },
+        "discordInviteUrl": { "type": "string", "maxLength": 200 },
+        "supportEmail": { "type": "string", "maxLength": 150 },
+        "storeUrl": { "type": "string", "maxLength": 150 }
+      },
+      "required": ["maintenanceMode", "storeUrl", "supportEmail"]
+    },
+    "SellerProfile": {
+      "title": "SellerProfile",
+      "description": "Third-party merchant store credentials and balances",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "storeName": { "type": "string", "maxLength": 100 },
+        "bio": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "suspended"] },
+        "commissionRate": { "type": "number" },
+        "balance": { "type": "number" },
+        "pendingBalance": { "type": "number" },
+        "totalWithdrawn": { "type": "number" },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "storeName", "status", "commissionRate"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable administrative action audit trail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "timestamp": { "type": "string" },
+        "actorId": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 255 },
+        "actorRole": { "type": "string", "maxLength": 50 },
+        "action": { "type": "string", "maxLength": 100 },
+        "targetType": { "type": "string", "maxLength": 50 },
+        "targetId": { "type": "string", "maxLength": 64 },
+        "details": { "type": "string", "maxLength": 2000 }
+      },
+      "required": ["id", "timestamp", "actorEmail", "action", "targetType"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with role, email, and preferences"
+    },
+    "/admins/{userId}": {
+      "schema": "AdminRole",
+      "description": "Security rule lookup mapping verifying administrative permissions"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Digital marketplace products, accounts, and service listings"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Storefront taxonomy categories and subcategories"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer purchase orders with 8-digit verification code"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Verified purchaser reviews and staff responses"
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Promotional discount codes"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "In-app notifications for order updates and tickets"
+    },
+    "/settings/bankDetails": {
+      "schema": "BankDetails",
+      "description": "Bank wire deposit instructions"
+    },
+    "/settings/siteSettings": {
+      "schema": "SiteSettings",
+      "description": "Global store settings and announcement bar"
+    },
+    "/sellerProfiles/{userId}": {
+      "schema": "SellerProfile",
+      "description": "Approved third-party merchant profiles"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Admin activity audit trail"
+    }
+  }
+}

@@ -1,0 +1,212 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ------------------------------------------------------------------------
+    // Global Security Helpers
+    // ------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'dilnathsathnidu750@gmail.com' ||
+        request.auth.token.email == 'owner@xcmnetwork.com'
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // 1. Admin Verification Lookup
+    // ------------------------------------------------------------------------
+    match /admins/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow write: if isAdmin() && isValidId(adminId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. Users (PII Protected)
+    // ------------------------------------------------------------------------
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId && (
+        incoming().role == 'Customer' || isAdmin()
+      );
+      allow update: if isSignedIn() && isValidId(userId) && (
+        isAdmin() || (
+          request.auth.uid == userId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'discordTag', 'avatarUrl']) &&
+          incoming().role == existing().role
+        )
+      );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 3. Taxonomies: Categories
+    // ------------------------------------------------------------------------
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(categoryId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 4. Products & Listings
+    // ------------------------------------------------------------------------
+    match /products/{productId} {
+      allow get: if isValidId(productId) && (
+        existing().status == 'active' ||
+        isAdmin() ||
+        (isSignedIn() && existing().sellerId == request.auth.uid)
+      );
+      allow list: if true;
+      allow create: if isSignedIn() && isValidId(productId) && (
+        isAdmin() || (
+          incoming().isMarketplace == true &&
+          incoming().sellerId == request.auth.uid
+        )
+      );
+      allow update: if isSignedIn() && isValidId(productId) && (
+        isAdmin() || (
+          existing().sellerId == request.auth.uid &&
+          incoming().sellerId == existing().sellerId &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'description', 'stockQuantity', 'images', 'warranty',
+            'deliveryEstimate', 'customerRequirements', 'revisionPolicy'
+          ])
+        )
+      );
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 5. Orders & Verification Codes
+    // ------------------------------------------------------------------------
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) && (
+        existing().customerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && isValidId(orderId) &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'Pending Payment';
+      allow update: if isSignedIn() && isValidId(orderId) && (
+        isAdmin() || (
+          existing().customerId == request.auth.uid &&
+          incoming().customerId == existing().customerId &&
+          incoming().finalPrice == existing().finalPrice &&
+          existing().status in ['Pending Payment', 'Slip Uploaded'] &&
+          incoming().status == 'Slip Uploaded' &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'paymentSlipUrl', 'paymentSlipUploadedAt', 'status',
+            'statusHistory', 'discordUsername', 'updatedAt'
+          ])
+        )
+      );
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 6. Reviews
+    // ------------------------------------------------------------------------
+    match /reviews/{reviewId} {
+      allow get: if isValidId(reviewId) && (
+        existing().status == 'approved' ||
+        isAdmin() ||
+        (isSignedIn() && existing().userId == request.auth.uid)
+      );
+      allow list: if true;
+      allow create: if isSignedIn() && isValidId(reviewId) &&
+        incoming().userId == request.auth.uid;
+      allow update: if isAdmin() && isValidId(reviewId);
+      allow delete: if isAdmin() && isValidId(reviewId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 7. Coupons
+    // ------------------------------------------------------------------------
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(couponId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 8. Notifications
+    // ------------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && isValidId(notificationId) && (
+        existing().userId == request.auth.uid ||
+        (existing().userId == 'ADMIN' && isAdmin())
+      );
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (resource.data.userId == 'ADMIN' && isAdmin())
+      );
+      allow create: if isSignedIn() && isValidId(notificationId);
+      allow update: if isSignedIn() && isValidId(notificationId) && (
+        existing().userId == request.auth.uid &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['read'])
+      );
+      allow delete: if isSignedIn() && isValidId(notificationId) && (
+        existing().userId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // 9. Store & Bank Settings
+    // ------------------------------------------------------------------------
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(settingId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 10. Seller Profiles
+    // ------------------------------------------------------------------------
+    match /sellerProfiles/{sellerId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(sellerId) && request.auth.uid == sellerId;
+      allow update: if isSignedIn() && isValidId(sellerId) && (
+        isAdmin() || (
+          request.auth.uid == sellerId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['storeName', 'bio', 'payoutDetails'])
+        )
+      );
+      allow delete: if isAdmin() && isValidId(sellerId);
+    }
+
+    // ------------------------------------------------------------------------
+    // 11. Immutable Audit Logs
+    // ------------------------------------------------------------------------
+    match /auditLogs/{logId} {
+      allow read: if isAdmin() && isValidId(logId);
+      allow create: if isSignedIn() && isValidId(logId);
+      allow update, delete: if false;
+    }
+  }
+}

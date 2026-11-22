@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Default Deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'dilnathsathnidu750@gmail.com' ||
+        request.auth.token.email == 'owner@xcmnetwork.com'
+      );
+    }
+
+    // 1. Product Images
+    match /products/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && (
+        isAdmin() ||
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*')
+      );
+    }
+
+    // 2. Payment Slips (Restricted to ordering customer and admins)
+    match /payment_slips/{orderCode}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+    }
+
+    // 3. User Avatars
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}
